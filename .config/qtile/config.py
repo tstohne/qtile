@@ -1,4 +1,4 @@
-# Qtile Configuration for CachyOS
+# Qtile Configuration for CachyOS (Wayland, Swedish layout, laptop)
 # Copyright (c) 2010 Aldo Cortesi
 # Copyright (c) 2010, 2014 dequis
 # Copyright (c) 2012 Randall Ma
@@ -9,48 +9,40 @@
 
 import os
 import subprocess
-from libqtile import bar, layout, widget, hook
+
+from libqtile import bar, hook, layout, widget
+from libqtile.backend.wayland import InputConfig
 from libqtile.config import Click, Drag, Group, Key, Match, Screen
 from libqtile.lazy import lazy
-from libqtile.bar import Bar
-from libqtile.widget import systray
-
-screens = [
-    Screen(
-        top=Bar(
-            [
-                # your other widgets...
-                widget.Systray(),
-            ],
-            24,
-        ),
-    ),
-]
-
-
-# Wayland startup hook
-@hook.subscribe.startup_once
-def autostart():
-    """Run autostart commands for Wayland"""
-    home = os.path.expanduser("~")
-
-    # Run autostart script if it exists
-    subprocess.call([home + "/.config/qtile/autostart.sh"])
-
 
 mod = "mod4"  # Super key
 terminal = "kitty"
 browser = "thorium-browser"
 file_manager = "thunar"
 
+# ---------------------------------------------------------------------------
+# Autostart (single hook, non-blocking)
+# ---------------------------------------------------------------------------
+@hook.subscribe.startup_once
+def autostart():
+    script = os.path.expanduser("~/.config/qtile/autostart.sh")
+    if os.path.exists(script):
+        subprocess.Popen([script])
+    # Tray applets (shown via the StatusNotifier widget)
+    subprocess.Popen(["nm-applet", "--indicator"])
+    subprocess.Popen(["blueman-applet"])
+
+
+# ---------------------------------------------------------------------------
+# Keys
+# ---------------------------------------------------------------------------
+SCREENSHOT_DIR = "~/Pictures/Screenshots"
+
 keys = [
-    # A list of available commands that can be bound to keys can be found
-    # at https://docs.qtile.org/en/latest/manual/config/lazy.html
     # Application launchers
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal (Kitty)"),
     Key([mod], "b", lazy.spawn(browser), desc="Launch web browser (Thorium)"),
     Key([mod], "e", lazy.spawn(file_manager), desc="Launch file manager (Thunar)"),
-    # Application launcher
     Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
     Key([mod], "d", lazy.spawn("rofi -show drun"), desc="Launch application launcher"),
     # Switch between windows
@@ -59,27 +51,17 @@ keys = [
     Key([mod], "j", lazy.layout.down(), desc="Move focus down"),
     Key([mod], "k", lazy.layout.up(), desc="Move focus up"),
     Key([mod], "space", lazy.layout.next(), desc="Move window focus to other window"),
-    # Move windows between left/right columns or move up/down in current stack.
-    Key(
-        [mod, "shift"], "h", lazy.layout.shuffle_left(), desc="Move window to the left"
-    ),
-    Key(
-        [mod, "shift"],
-        "l",
-        lazy.layout.shuffle_right(),
-        desc="Move window to the right",
-    ),
+    # Move windows
+    Key([mod, "shift"], "h", lazy.layout.shuffle_left(), desc="Move window left"),
+    Key([mod, "shift"], "l", lazy.layout.shuffle_right(), desc="Move window right"),
     Key([mod, "shift"], "j", lazy.layout.shuffle_down(), desc="Move window down"),
     Key([mod, "shift"], "k", lazy.layout.shuffle_up(), desc="Move window up"),
-    # Grow windows. If current window is on the edge of screen and direction
-    Key([mod, "control"], "h", lazy.layout.grow_left(), desc="Grow window to the left"),
-    Key(
-        [mod, "control"], "l", lazy.layout.grow_right(), desc="Grow window to the right"
-    ),
+    # Grow windows
+    Key([mod, "control"], "h", lazy.layout.grow_left(), desc="Grow window left"),
+    Key([mod, "control"], "l", lazy.layout.grow_right(), desc="Grow window right"),
     Key([mod, "control"], "j", lazy.layout.grow_down(), desc="Grow window down"),
     Key([mod, "control"], "k", lazy.layout.grow_up(), desc="Grow window up"),
     Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
-    # Toggle between split and unsplit sides of stack.
     Key(
         [mod, "shift"],
         "Return",
@@ -88,27 +70,16 @@ keys = [
     ),
     # Window management
     Key([mod], "w", lazy.window.kill(), desc="Kill focused window"),
-    Key(
-        [mod],
-        "f",
-        lazy.window.toggle_fullscreen(),
-        desc="Toggle fullscreen on the focused window",
-    ),
-    Key(
-        [mod],
-        "t",
-        lazy.window.toggle_floating(),
-        desc="Toggle floating on the focused window",
-    ),
+    Key([mod], "f", lazy.window.toggle_fullscreen(), desc="Toggle fullscreen"),
+    Key([mod], "t", lazy.window.toggle_floating(), desc="Toggle floating"),
     Key([mod, "control"], "r", lazy.reload_config(), desc="Reload the config"),
     Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown Qtile"),
-    # Toggle between different layouts as defined below
     Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
-    # Volume controls (Wayland)
+    # Volume (PipeWire)
     Key(
         [],
         "XF86AudioRaiseVolume",
-        lazy.spawn("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"),
+        lazy.spawn("wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"),
         desc="Increase volume",
     ),
     Key(
@@ -123,11 +94,11 @@ keys = [
         lazy.spawn("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),
         desc="Mute/unmute volume",
     ),
-    # Brightness controls
+    # Brightness
     Key(
         [],
         "XF86MonBrightnessUp",
-        lazy.spawn("brightnessctl set +10%"),
+        lazy.spawn("brightnessctl set 10%+"),
         desc="Increase brightness",
     ),
     Key(
@@ -136,111 +107,74 @@ keys = [
         lazy.spawn("brightnessctl set 10%-"),
         desc="Decrease brightness",
     ),
-    # Screenshots (Wayland)
+    # Screenshots (shell=True so $(...) and ~ are expanded)
     Key(
         [],
         "Print",
         lazy.spawn(
-            'grim -g "$(slurp)" ~/Pictures/Screenshots/screenshot-$(date +%Y%m%d-%H%M%S).png'
+            f'mkdir -p {SCREENSHOT_DIR} && grim -g "$(slurp)" '
+            f"{SCREENSHOT_DIR}/screenshot-$(date +%Y%m%d-%H%M%S).png",
+            shell=True,
         ),
-        desc="Take screenshot",
+        desc="Screenshot (region)",
     ),
     Key(
         [mod],
         "Print",
-        lazy.spawn("grim ~/Pictures/Screenshots/fullscreen-$(date +%Y%m%d-%H%M%S).png"),
-        desc="Take fullscreen screenshot",
+        lazy.spawn(
+            f"mkdir -p {SCREENSHOT_DIR} && grim "
+            f"{SCREENSHOT_DIR}/fullscreen-$(date +%Y%m%d-%H%M%S).png",
+            shell=True,
+        ),
+        desc="Screenshot (full screen)",
     ),
-    # System controls
+    # System
     Key([mod, "shift"], "q", lazy.spawn("powermenu"), desc="Power menu"),
 ]
 
-# Workspaces/Groups
+# ---------------------------------------------------------------------------
+# Groups
+# ---------------------------------------------------------------------------
 groups = [Group(i) for i in "123456789"]
 
-for i in groups:
+for g in groups:
     keys.extend(
         [
-            # mod1 + letter of group = switch to group
             Key(
                 [mod],
-                i.name,
-                lazy.group[i.name].toscreen(),
-                desc="Switch to group {}".format(i.name),
+                g.name,
+                lazy.group[g.name].toscreen(),
+                desc=f"Switch to group {g.name}",
             ),
-            # mod1 + shift + letter of group = switch to & move focused window to group
             Key(
                 [mod, "shift"],
-                i.name,
-                lazy.window.togroup(i.name, switch_group=True),
-                desc="Switch to & move focused window to group {}".format(i.name),
+                g.name,
+                lazy.window.togroup(g.name, switch_group=True),
+                desc=f"Switch to & move focused window to group {g.name}",
             ),
         ]
     )
 
+# ---------------------------------------------------------------------------
 # Layouts
+# ---------------------------------------------------------------------------
+layout_theme = dict(
+    border_focus="#9fafdf",
+    border_normal="#4f4f4f",
+    border_width=2,
+    margin=8,
+)
+
 layouts = [
-    layout.Columns(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
+    layout.Columns(**layout_theme),
+    layout.MonadTall(**layout_theme),
+    layout.Bsp(**layout_theme),
     layout.Max(),
-    layout.Stack(
-        num_stacks=2,
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.Bsp(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.Matrix(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.MonadTall(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.MonadWide(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.RatioTile(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.Tile(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.TreeTab(),
-    layout.VerticalTile(
-        border_focus="#9fafdf",
-        border_normal="#4f4f4f",
-        border_width=2,
-        margin=8,
-    ),
-    layout.Zoomy(),
 ]
 
-# Colors (Zenburn theme)
+# ---------------------------------------------------------------------------
+# Colors (Zenburn)
+# ---------------------------------------------------------------------------
 colors = [
     ["#3f3f3f", "#3f3f3f"],  # 0 - background
     ["#4f4f4f", "#4f4f4f"],  # 1 - darker background
@@ -263,14 +197,33 @@ widget_defaults = dict(
 )
 extension_defaults = widget_defaults.copy()
 
+
+# ---------------------------------------------------------------------------
+# Bar helpers
+# ---------------------------------------------------------------------------
+def bluetooth_status():
+    """One cheap call; reports On/Off for the default controller."""
+    try:
+        out = subprocess.check_output(
+            ["bluetoothctl", "show"], text=True, timeout=2
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return "Off"
+    for line in out.splitlines():
+        if line.strip().startswith("Powered:"):
+            return "On" if line.split()[-1] == "yes" else "Off"
+    return "Off"
+
+
+# ---------------------------------------------------------------------------
+# Screens / bar
+# ---------------------------------------------------------------------------
 screens = [
     Screen(
         top=bar.Bar(
             [
                 widget.CurrentLayout(
-                    foreground=colors[8],
-                    background=colors[0],
-                    padding=5,
+                    foreground=colors[8], background=colors[0], padding=5
                 ),
                 widget.GroupBox(
                     font="SauceCodePro Nerd Font",
@@ -292,30 +245,18 @@ screens = [
                     foreground=colors[2],
                     background=colors[0],
                 ),
-                widget.Prompt(
-                    foreground=colors[10],
-                    background=colors[0],
-                ),
+                widget.Prompt(foreground=colors[10], background=colors[0]),
                 widget.WindowName(
-                    foreground=colors[6],
-                    background=colors[0],
-                    padding=0,
+                    foreground=colors[6], background=colors[0], padding=0
                 ),
                 widget.Chord(
-                    chords_colors={
-                        "launch": ("#ff0000", "#ffffff"),
-                    },
+                    chords_colors={"launch": ("#ff0000", "#ffffff")},
                     name_transform=lambda name: name.upper(),
                 ),
-                widget.Systray(
-                    background=colors[0],
-                    padding=5,
-                ),
+                # Wayland-compatible tray (Systray is X11-only)
+                widget.StatusNotifier(background=colors[0], padding=5),
                 widget.Sep(
-                    linewidth=0,
-                    padding=6,
-                    foreground=colors[2],
-                    background=colors[0],
+                    linewidth=0, padding=6, foreground=colors[2], background=colors[0]
                 ),
                 widget.CPU(
                     format="CPU: {load_percent}%",
@@ -329,26 +270,14 @@ screens = [
                     background=colors[0],
                     padding=5,
                 ),
-                widget.GenPollText(
-                    func=lambda: subprocess.check_output(
-                        ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
-                    )
-                    .decode("utf-8")
-                    .strip()
-                    .replace("Volume: ", "Vol: "),
-                    update_interval=1,
+                # Event-driven; needs `pulsectl-asyncio` (works with PipeWire-Pulse)
+                widget.PulseVolume(
+                    fmt="Vol: {}",
+                    step=5,
                     foreground=colors[7],
                     background=colors[0],
                     padding=5,
-                    mouse_callbacks={
-                        "Button3": lazy.spawn("pavucontrol"),
-                        "Button4": lazy.spawn(
-                            "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
-                        ),
-                        "Button5": lazy.spawn(
-                            "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-                        ),
-                    },
+                    mouse_callbacks={"Button3": lazy.spawn("pavucontrol")},
                 ),
                 widget.Wlan(
                     interface="wlan0",
@@ -366,42 +295,22 @@ screens = [
                     padding=5,
                 ),
                 widget.GenPollText(
-                    func=lambda: (
-                        subprocess.check_output(["bluetoothctl", "show"])
-                        .decode("utf-8")
-                        .split("\n")[4]
-                        .split()[1]
-                        if subprocess.run(
-                            ["bluetoothctl", "show"], capture_output=True
-                        ).returncode
-                        == 0
-                        else "Off"
-                    ),
-                    update_interval=5,
+                    func=bluetooth_status,
+                    update_interval=15,
+                    fmt="BT: {}",
                     foreground=colors[8],
                     background=colors[0],
                     padding=5,
-                    fmt="BT: {}",
                     mouse_callbacks={"Button1": lazy.spawn("blueman-manager")},
                 ),
-                widget.KeyboardLayout(
-                    configured_keyboards=["se"],
-                    foreground=colors[9],
-                    background=colors[0],
-                    padding=5,
-                ),
                 widget.Clock(
-                    format="%Y-%m-%d %a %I:%M %p",
+                    format="%Y-%m-%d %a %H:%M",
                     foreground=colors[10],
                     background=colors[0],
                     padding=5,
                     mouse_callbacks={
-                        "Button1": lambda: qtile.cmd_spawn(
-                            "calendar"
-                        ),  # Launch calendar app
-                        "Button3": lambda: qtile.cmd_spawn(
-                            "calcurse"
-                        ),  # Right-click for calcurse
+                        "Button1": lazy.spawn("calendar"),
+                        "Button3": lazy.spawn(f"{terminal} -e calcurse"),
                     },
                 ),
                 widget.QuickExit(
@@ -418,7 +327,9 @@ screens = [
     ),
 ]
 
-# Drag floating layouts.
+# ---------------------------------------------------------------------------
+# Mouse
+# ---------------------------------------------------------------------------
 mouse = [
     Drag(
         [mod],
@@ -432,6 +343,9 @@ mouse = [
     Click([mod], "Button2", lazy.window.bring_to_front()),
 ]
 
+# ---------------------------------------------------------------------------
+# Misc behavior
+# ---------------------------------------------------------------------------
 dgroups_key_binder = None
 dgroups_app_rules = []  # type: list
 follow_mouse_focus = True
@@ -440,7 +354,6 @@ cursor_warp = False
 
 floating_layout = layout.Floating(
     float_rules=[
-        # Run the utility of `xprop` to see the wm class and name of an X client.
         *layout.Floating.default_float_rules,
         Match(wm_class="confirmreset"),  # gitk
         Match(wm_class="makebranch"),  # gitk
@@ -448,48 +361,32 @@ floating_layout = layout.Floating(
         Match(wm_class="ssh-askpass"),  # ssh-askpass
         Match(title="branchdialog"),  # gitk
         Match(title="pinentry"),  # GPG key password entry
-        Match(wm_class="Thunar"),  # Make Thunar float by default
-        Match(wm_class="pavucontrol"),  # Volume control
-        Match(wm_class="blueman-manager"),  # Bluetooth manager
+        # Wayland app_ids are often lowercase; match both spellings
+        Match(wm_class="Thunar"),
+        Match(wm_class="thunar"),
+        Match(wm_class="pavucontrol"),
+        Match(wm_class="blueman-manager"),
     ]
 )
 
 auto_fullscreen = True
 focus_on_window_activation = "smart"
 reconfigure_screens = True
-
-# If things like steam games want to auto-minimize themselves when losing
-# focus, should we respect this or not?
 auto_minimize = True
 
-# When using the Wayland backend, this configures input devices
+# ---------------------------------------------------------------------------
+# Wayland input (InputConfig objects, kb_* option names)
+# ---------------------------------------------------------------------------
 wl_input_rules = {
-    "type:keyboard": {
-        "xkb_layout": "se",  # Swedish keyboard layout
-        "xkb_options": "caps:swapescape",  # Swap Caps Lock and Escape
-    },
-    "type:touchpad": {
-        "tap": True,
-        "natural_scroll": True,
-    },
+    "type:keyboard": InputConfig(
+        kb_layout="se",
+        kb_options="caps:swapescape",
+        kb_repeat_rate=40,
+        kb_repeat_delay=200,
+    ),
+    "type:touchpad": InputConfig(
+        tap=True,
+        natural_scroll=True,
+        dwt=True,
+    ),
 }
-
-import subprocess
-
-
-@hook.subscribe.startup_once
-def autostart():
-    subprocess.Popen(["blueman-applet"])
-    subprocess.Popen(["nm-applet"])
-    subprocess.Popen(["volumeicon"])
-
-
-# XXX: Gasp! We're lying here. In fact, nobody really uses or cares about this
-# string besides java UI toolkits; you can see several discussions on the
-# mailing lists, GitHub issues, and other WM documentation that suggest setting
-# this string if your java app doesn't work correctly. We may as well just lie
-# and say that we're a working one by default.
-#
-# We choose LG3D to maximize irony: it is a 3D non-reparenting WM written in
-# java that happens to be on java's whitelist.
-wmname = "LG3D"
