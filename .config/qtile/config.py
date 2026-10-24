@@ -24,6 +24,26 @@ WALLPAPER = os.path.join(HOME, ".config/qtile/wallpaper.png")
 # ---------------------------------------------------------------------------
 # Autostart (runs once per X session, never blocks, skips missing programs)
 # ---------------------------------------------------------------------------
+# Workspace names, in order (mod+1 .. mod+5)
+GROUP_NAMES = ["Web", "Term", "Emacs", "Chat", "Etc"]
+
+# (group, command) pairs launched at session start
+WORKSPACE_APPS = [
+    ("Web", ["/usr/bin/thorium-browser"]),
+    ("Term", ["/usr/bin/kitty"]),
+    ("Emacs", ["/usr/bin/emacsclient", "-r", "-a", ""]),
+    ("Chat", ["/usr/bin/mattermost-desktop"]),
+]
+
+# Lower-case WM_CLASS -> group, consumed once as each window appears
+_pending_windows = {
+    "thorium-browser": "Web",
+    "kitty": "Term",
+    "emacs": "Emacs",
+    "mattermost": "Chat",
+}
+
+
 def run_once(*cmd: str) -> None:
     """Spawn a program if it is installed; silently skip otherwise."""
     if shutil.which(cmd[0]):
@@ -62,10 +82,32 @@ def autostart() -> None:
     run_once("blueman-applet")
     run_once("dunst")
 
+    # Workspace apps: each window is sent to its group by on_new_client() below
+    for _group, cmd in WORKSPACE_APPS:
+        run_once(*cmd)
+
     # User script for anything else
     script = os.path.join(HOME, ".config/qtile/autostart.sh")
     if os.path.exists(script):
         subprocess.Popen([script])
+
+
+@hook.subscribe.client_new
+def on_new_client(window) -> None:
+    """Send the first window of each autostarted app to its workspace.
+
+    Only windows from the autostart list are moved; apps you launch later
+    open on whatever workspace you are on.
+    """
+    try:
+        classes = [c.lower() for c in window.get_wm_class() or ()]
+    except Exception:
+        return
+    for wm_class, group in list(_pending_windows.items()):
+        if wm_class in classes:
+            window.togroup(group)
+            del _pending_windows[wm_class]
+            break
 
 
 # Java GUI apps misbehave unless the WM identifies as LG3D
@@ -173,20 +215,20 @@ keys = [
 # ---------------------------------------------------------------------------
 # Groups
 # ---------------------------------------------------------------------------
-groups = [Group(i) for i in "123456789"]
+groups = [Group(name) for name in GROUP_NAMES]
 
-for g in groups:
+for index, g in enumerate(groups, start=1):
     keys.extend(
         [
             Key(
                 [mod],
-                g.name,
+                str(index),
                 lazy.group[g.name].toscreen(),
                 desc=f"Switch to group {g.name}",
             ),
             Key(
                 [mod, "shift"],
-                g.name,
+                str(index),
                 lazy.window.togroup(g.name, switch_group=True),
                 desc=f"Switch to & move focused window to group {g.name}",
             ),
