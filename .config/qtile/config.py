@@ -8,6 +8,7 @@ import shutil
 import subprocess
 
 from libqtile import bar, hook, layout, widget
+from libqtile.backend.base import Window
 from libqtile.config import Click, Drag, Group, Key, Match, Screen
 from libqtile.lazy import lazy
 
@@ -31,7 +32,7 @@ GROUP_NAMES = ["Web", "Term", "Emacs", "Chat", "Etc"]
 WORKSPACE_APPS = [
     ("Web", ["/usr/bin/thorium-browser"]),
     ("Term", ["/usr/bin/kitty"]),
-    ("Emacs", ["/usr/bin/emacsclient", "-r", "-a", ""]),
+    ("Emacs", ["/usr/bin/emacsclient", "-c"]),
     ("Chat", ["/usr/bin/mattermost-desktop"]),
 ]
 
@@ -62,7 +63,7 @@ def autostart() -> None:
     run_once("xsetroot", "-cursor_name", "left_ptr")
 
     # Compositor (vsync, no tearing on UMA graphics)
-    run_once("picom", "-b")
+    run_once("picom"," --config ~/.config/picom/picom.conf -b")
 
     # Wallpaper
     if os.path.exists(WALLPAPER):
@@ -80,6 +81,7 @@ def autostart() -> None:
     # Tray applets (shown in the Systray widget)
     run_once("nm-applet")
     run_once("blueman-applet")
+    # Notifications
     run_once("dunst")
 
     # Workspace apps: each window is sent to its group by on_new_client() below
@@ -93,7 +95,7 @@ def autostart() -> None:
 
 
 @hook.subscribe.client_new
-def on_new_client(window) -> None:
+def on_new_client(window: Window) -> None:
     """Send the first window of each autostarted app to its workspace.
 
     Only windows from the autostart list are moved; apps you launch later
