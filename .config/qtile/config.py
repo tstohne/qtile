@@ -124,7 +124,7 @@ keys = [
     # Application launchers
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal (Kitty)"),
     Key([mod], "b", lazy.spawn(browser), desc="Launch web browser (Thorium)"),
-    Key([mod], "e", lazy.spawn(file_manager), desc="Launch file manager (Thunar)"),
+    Key([mod], "e", lazy.spawn(file_manager), desc="Launch emacs (emacsclient -c)"),
     Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
     Key([mod], "d", lazy.spawn("rofi -show drun"), desc="Launch application launcher"),
     # Switch between windows
