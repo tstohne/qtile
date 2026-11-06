@@ -279,7 +279,7 @@ colors = [
 ]
 
 widget_defaults = dict(
-    font="SauceCodePro Nerd Font",
+    font="FiraCode Nerd Font Medium",
     fontsize=12,
     padding=3,
     foreground=colors[2],
@@ -316,7 +316,7 @@ screens = [
                     foreground=colors[8], background=colors[0], padding=5
                 ),
                 widget.GroupBox(
-                    font="SauceCodePro Nerd Font",
+                    font="FiraCode Nerd Font Medium",
                     fontsize=11,
                     margin_y=3,
                     margin_x=0,
