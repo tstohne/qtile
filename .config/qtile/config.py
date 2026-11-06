@@ -14,13 +14,20 @@ from libqtile.lazy import lazy
 
 mod = "mod4"  # Super key
 terminal = "kitty"
-browser = "thorium-browser"
+browser = "/opt/brave-bin/brave-browser"
 file_manager = "thunar"
 
 HOME = os.path.expanduser("~")
 SCREENSHOT_DIR = "~/Pictures/Screenshots"
 WALLPAPER = os.path.join(HOME, ".config/qtile/wallpaper.png")
 
+# Font selection
+widget_defaults = dict(
+    font="FiraCode Nerd Font Medium",
+    fontsize=12,
+    padding=3,
+)
+extension_defaults = widget_defaults.copy()
 
 # ---------------------------------------------------------------------------
 # Autostart (runs once per X session, never blocks, skips missing programs)
@@ -30,7 +37,7 @@ GROUP_NAMES = ["Web", "Term", "Emacs", "Chat", "Etc"]
 
 # (group, command) pairs launched at session start
 WORKSPACE_APPS = [
-    ("Web", ["/usr/bin/thorium-browser"]),
+    ("Web", ["/opt/brave-bin/brave-browser"]),
     ("Term", ["/usr/bin/kitty"]),
     ("Emacs", ["/usr/bin/emacsclient", "-c"]),
     ("Chat", ["/usr/bin/mattermost-desktop"]),
@@ -38,7 +45,7 @@ WORKSPACE_APPS = [
 
 # Lower-case WM_CLASS -> group, consumed once as each window appears
 _pending_windows = {
-    "thorium-browser": "Web",
+    "brave-browser": "Web",
     "kitty": "Term",
     "emacs": "Emacs",
     "mattermost": "Chat",
