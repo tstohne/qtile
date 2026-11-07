@@ -48,7 +48,7 @@ _pending_windows = {
     "brave-browser": "Web",
     "kitty": "Term",
     "emacs": "Emacs",
-    "mattermost": "Chat",
+    "mattermost-desktop": "Chat",
 }
 
 
@@ -70,8 +70,8 @@ def autostart() -> None:
     run_once("xsetroot", "-cursor_name", "left_ptr")
 
     # Compositor (vsync, no tearing on UMA graphics)
-    run_once("picom"," --config ~/.config/picom/picom.conf -b")
-
+    run_once("picom", "--config", os.path.join(HOME, ".config/picom/picom.conf"), "-b")
+ 
     # Wallpaper
     if os.path.exists(WALLPAPER):
         run_once("feh", "--bg-fill", WALLPAPER)
@@ -383,7 +383,7 @@ screens = [
                     mouse_callbacks={"Button1": lazy.spawn("nm-connection-editor")},
                 ),
                 widget.Net(
-                    interface="enp3s0",
+                    interface="eth0",
                     format="{down:.0f}{down_suffix} ↓↑ {up:.0f}{up_suffix}",
                     update_interval=15,
                     foreground=colors[5],
