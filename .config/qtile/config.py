@@ -40,6 +40,7 @@ WORKSPACE_APPS = [
     ("Web", ["/opt/brave-bin/brave-browser"]),
     ("Term", ["/usr/bin/kitty"]),
     ("Emacs", ["/usr/bin/emacsclient", "-c"]),
+    ("Mail", ["/usr/bin/betterbird"]),
     ("Chat", ["/usr/bin/mattermost-desktop"]),
 ]
 
@@ -48,6 +49,7 @@ _pending_windows = {
     "brave-browser": "Web",
     "kitty": "Term",
     "emacs": "Emacs",
+    "eu.betterbird.Betterbird": "Mail",
     "mattermost-desktop": "Chat",
 }
 
@@ -61,7 +63,7 @@ def run_once(*cmd: str) -> None:
 @hook.subscribe.startup_once
 def autostart() -> None:
     # Keyboard: Swedish layout, Caps <-> Escape swapped, fast key repeat
-    run_once("setxkbmap", "-layout", "se", "-option", "caps:swapescape")
+    # run_once("setxkbmap", "-layout", "se", "-option", "caps:swapescape")
     run_once("xset", "r", "rate", "200", "40")
     run_once("xset", "s", "off", "-dpms")  # drop this line if you want DPMS blanking
 
@@ -130,8 +132,9 @@ SHOT = os.path.expanduser(SCREENSHOT_DIR)
 keys = [
     # Application launchers
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal (Kitty)"),
-    Key([mod], "b", lazy.spawn(browser), desc="Launch web browser (Thorium)"),
+    Key([mod], "b", lazy.spawn(browser), desc="Launch web browser (Brave)"),
     Key([mod], "e", lazy.spawn(file_manager), desc="Launch emacs (emacsclient -c)"),
+    Key([mod, "shift"], "m", lazy.spawn("/usr/bin/betterbird"), desc="Launch email client"),
     Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
     Key([mod], "d", lazy.spawn("rofi -show drun"), desc="Launch application launcher"),
     # Switch between windows
